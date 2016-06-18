@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en" ng-app>
+  <head>
+    <title>URL Shortener Microservice</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="/css/bootstrap.min.css">
+    <link rel="stylesheet" href="/css/bootstrap-responsive.min.css">
+    <link rel="stylesheet" href="/css/timestamp.css" type="text/css">
+    </style>
+  </head>
+  <body>
+    <h1 class="title">URL Shortener Microservice</h1>
+    <div class=userStories>
+      <h3>User Stories</h3>
+      <ul>
+        <li>I can pass a URL as a parameter and I will receive a shortened URL in the JSON response.</li>
+        <li>If I pass an invalid URL that doesn't follow the valid http://www.example.com format, the JSON response will contain an error instead.</li>
+        <li>When I visit that shortened URL, it will redirect me to my original link.</li>
+      </ul>
+    </div>
+    <h3>Example usage:</h3>
+    <div class="sampleText">
+      <p>https://timestamp-ms.herokuapp.com/December%2015,%202015</p>
+      <p>https://timestamp-ms.herokuapp.com/987654321</p>
+    </div>
+    <h3>Example output:</h3>
+    <div class="sampleText">
+      <p>"unix": 987654321, "natural": "April 19, 2001"</p>
+    </div>
+    <script src="/js/jquery.min.js"></script>
+    <script src="/js/bootstrap.min.js"></script>
+    <script src="/js/angular.min.js"></script>
+  </body>
+</html>
