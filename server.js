@@ -6,21 +6,66 @@ var router = express();
 
 router.use(express.static(path.resolve(__dirname, 'urlShortener')));
 
-var urls = null
+var mongoDao = function() {
+    var urls = null
+    
+    var setUrls = function(collection) {
+        urls = collection
+    }
+
+    var onComplete = function (err, documents, callback) {
+        if (err) { throw err }
+        callback(documents)
+    }
+
+    var getAllUrl = function(callback) {
+        urls.find({}, { _id: 0 }).toArray(function(err, documents) {
+            onComplete(err, documents, callback)
+        })
+    }
+    
+    var getShortUrl = function(callback, shortUrl) {
+        urls.find({short_url: shortUrl}, { _id: 0 }).toArray(function(err, documents) {
+            onComplete(err, documents, callback)
+        })
+    }
+    
+    var getOriginalUrl = function(callback, originalUrl) {
+        urls.findOne({original_url: originalUrl}, function(err, documents) {
+            onComplete(err, documents, callback)
+        })
+    }
+
+    var addOriginalUrl = function(callback, url) {
+        urls.insert(url, function(err, documents) {
+            onComplete(err, documents, callback)
+        })
+    }    
+
+    return {
+        setUrls: setUrls,
+        getAllUrl: getAllUrl,
+        getShortUrl: getShortUrl,
+        getOriginalUrl: getOriginalUrl,
+        addOriginalUrl: addOriginalUrl
+    }
+}
+
+var dao = null
 var mongoUrl = 'mongodb://localhost:27017/urlShortener'
 mongo.connect(mongoUrl, function(err, db){
     if (err) { throw err }
     console.log('Connecting')
-    urls = db.collection('urls')
+    dao = mongoDao()
+    dao.setUrls(db.collection('urls'))
 })
 
 router.get('/all', function(req, res) {
-    urls.find({}, { _id: 0 }).toArray(function(err, documents) { handleFind(err, documents) })
-
-    var handleFind = function(err, documents) {
-        if (err) throw err
-        showAllDocuments(res, documents)
+    var processAllUrl = function(documents) {
+        return showAllDocuments(res, documents);
     }
+
+    dao.getAllUrl(processAllUrl)
 })
 
 router.get('/new/*', function(req, res) {
@@ -31,41 +76,34 @@ router.get('/new/*', function(req, res) {
         return;
     }
 
-    urls.findOne({original_url: url}, function(err, doc) { handleFind(err, doc) })
-
-    var handleFind = function(err, doc) {
-        if (err) {
-            sendResponse(res, {error: 'MongoFindError: '+err.message})
-            return
-        }
-        if (doc === null) {
+    var handleFind = function(document) {
+        if (document === null) {
             var hash = getHash(url)
             var record = {
                 original_url: url,
                 short_url: getHost(req) + '/' + hash
             }
-            urls.insert(record, function(err, obj) {
-                if (err) {
-                    sendResponse(res, {error: 'MongoInsertError: '+err.message})
-                    return
-                }
-                delete record._id
-                sendResponse(res, record)
-            })
+            dao.addOriginalUrl(handleInsert, record)
         } else {
-            delete doc._id
-            sendResponse(res, doc)
+            delete document._id
+            sendResponse(res, document)
         }
     }
+    
+    var handleInsert = function(result) {
+        var record = result['ops'][0]
+        delete record._id
+        sendResponse(res, record)
+    }
+    
+    dao.getOriginalUrl(handleFind, url)
 })
 
 router.use(function(req, res) {
     var hash = req.originalUrl.substr(1)
     var shortUrl = getHost(req) + '/' + hash
     
-    urls.find({short_url: shortUrl}, { _id: 0 }).toArray(function(err, documents) { handleFind(err, documents) })
-
-    var handleFind = function(err, documents) {
+    var processShortUrl = function(documents) {
         var count = documents.length
         if (count === 0) {
             sendResponse(res, {"error":"This url is not in the database."})
@@ -77,6 +115,8 @@ router.use(function(req, res) {
             showAllDocuments(res, documents)
         }
     }
+    
+    dao.getShortUrl(processShortUrl, shortUrl)
 })
 
 router.listen(process.env.PORT || 3000);
@@ -117,4 +157,3 @@ var showAllDocuments = function(res, documents) {
 var sendResponse = function(res, response) {
     res.end(JSON.stringify(response))
 }
-
