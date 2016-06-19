@@ -51,14 +51,59 @@ var mongoDao = function() {
     }
 }
 
+var objectDao = function() {
+	var urls = []
+
+	var getAllUrl = function(callback) {
+		callback(urls)
+	}
+
+	var getShortUrl = function(callback, shortUrl) {
+		var documents = urls.filter(function(x) {
+			return x.short_url === shortUrl
+		})
+		callback(documents)
+	}
+
+	var getOriginalUrl = function(callback, originalUrl) {
+		var documents = urls.filter(function(x) {
+			return x.original_url === originalUrl
+		})
+		if (documents.length === 0)
+    		callback(null)
+    	else
+    	    callback(documents)
+	}
+
+	var addOriginalUrl = function(callback, url) {
+		urls.push(url)
+		var result = {
+		    ops: [url]
+		}
+		callback(result)
+	}
+
+    return {
+        getAllUrl: getAllUrl,
+        getShortUrl: getShortUrl,
+        getOriginalUrl: getOriginalUrl,
+        addOriginalUrl: addOriginalUrl
+    }
+}
+
 var dao = null
-var mongoUrl = 'mongodb://localhost:27017/urlShortener'
-mongo.connect(mongoUrl, function(err, db){
-    if (err) { throw err }
-    console.log('Connecting')
-    dao = mongoDao()
-    dao.setUrls(db.collection('urls'))
-})
+if (process.argv.length > 2 && process.argv[2].slice(0,7) === 'mongodb') {
+    mongo.connect(process.argv[2], function(err, db){
+        if (err) { throw err }
+        console.log('Connecting')
+        dao = mongoDao()
+        dao.setUrls(db.collection('urls'))
+    })
+}
+else {
+    console.log('Mocking')
+    dao = objectDao()
+}
 
 router.get('/all', function(req, res) {
     var processAllUrl = function(documents) {
